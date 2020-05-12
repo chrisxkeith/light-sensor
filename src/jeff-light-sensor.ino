@@ -75,9 +75,7 @@ void Utils::publish(String event, String data) {
 void Utils::publishJson() {
     String json("{");
     JSonizer::addFirstSetting(json, "githubHash", githubHash);
-    JSonizer::addSetting(json, "githubRepo", "to come");
-    JSonizer::addSetting(json, "publishRateInSeconds", String(publishRateInSeconds));
-    JSonizer::addSetting(json, "publishDelay", JSonizer::toString(publishDelay));
+    JSonizer::addSetting(json, "githubRepo", "https://github.com/chrisxkeith/light-sensor");
     json.concat("}");
     publish("Utils json", json);
 }
@@ -102,12 +100,11 @@ String TimeSupport::getSettings() {
 
 TimeSupport::TimeSupport(int timeZoneOffset, String timeZoneString) {
     this->ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
-    this->lastSyncMillis = millis();
     this->timeZoneOffset = timeZoneOffset;
     this->timeZoneString = timeZoneString;
     Time.zone(timeZoneOffset);
     Particle.syncTime();
-    lastSyncMillis = millis();
+    this->lastSyncMillis = millis();
 }
 
 String TimeSupport::timeStrZ(time_t t) {
@@ -158,17 +155,26 @@ int publishData(String command) {
   return 1;
 }
 
+int lastHour = -1;
+void publishWithMessage() {
+  publishData("");
+  lastHour = Time.hour();
+  Particle.publish("Message", "Next publish in an hour.", 1, PRIVATE);
+}
+
 void setup() {
   Particle.publish("Debug", "Started setup...", 1, PRIVATE);
   Particle.function("publishData", publishData);
   Particle.function("getSettings", pubSettings);
 
   pinMode(A0, INPUT);
-  publishData("");
+  publishWithMessage();
   Particle.publish("Debug", "Finished setup...", 1, PRIVATE);
 }
 
 void loop() {
-  publishData("");
-  delay(3000);
+  timeSupport.handleTime();
+  if (Time.minute() == 0 && lastHour != Time.hour()) {
+    publishWithMessage();
+  }
 }

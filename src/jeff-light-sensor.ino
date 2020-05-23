@@ -1,5 +1,5 @@
 
-const String githubHash = "0f0e905fe18ecb1bae661041149114190fa252f2";
+const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
 
 #include <limits.h>
 
@@ -148,10 +148,25 @@ int pubSettings(String command) {
     return 1;
 }
 
-int publishData(String command) {
-  int value = analogRead(A0);
+void publishVal(int value) {
   String s(value);
   Particle.publish("Light sensor", s.c_str(), PRIVATE);
+}
+
+int nSamples = 0;
+double total = 0.0;
+int publishData(String command) {
+  String msg("nSamples = ");
+  msg.concat(nSamples);
+  msg.concat("; total = ");
+  msg.concat(total);
+  msg.concat(";");
+  Particle.publish("Message", msg, 1, PRIVATE);
+
+  int value = (int)round(total / nSamples);
+  publishVal(value);
+  nSamples = 0;
+  total = 0.0;
   return 1;
 }
 
@@ -163,17 +178,21 @@ void publishWithMessage() {
 }
 
 void setup() {
-  Particle.publish("Debug", "Started setup...", 1, PRIVATE);
+  Particle.publish("Message", "Started setup...", 1, PRIVATE);
   Particle.function("publishData", publishData);
   Particle.function("getSettings", pubSettings);
 
   pinMode(A0, INPUT);
-  publishWithMessage();
-  Particle.publish("Debug", "Finished setup...", 1, PRIVATE);
+  publishVal(analogRead(A0));
+  lastHour = Time.hour();
+  Particle.publish("Message", "Next publish at the top of the hour.", 1, PRIVATE);
+  Particle.publish("Message", "Finished setup...", 1, PRIVATE);
 }
 
 void loop() {
   timeSupport.handleTime();
+  total += analogRead(A0);
+  nSamples++;
   if (Time.minute() == 0 && lastHour != Time.hour()) {
     publishWithMessage();
   }

@@ -1,5 +1,5 @@
 
-const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
+const String githubHash = "0f0e905fe18ecb1bae661041149114190fa252f2";
 
 #include <limits.h>
 
@@ -159,7 +159,7 @@ int lastHour = -1;
 void publishWithMessage() {
   publishData("");
   lastHour = Time.hour();
-  Particle.publish("Message", "Next publish in an hour.", 1, PRIVATE);
+  Particle.publish("Message", "Next publish at the top of the hour.", 1, PRIVATE);
 }
 
 void setup() {

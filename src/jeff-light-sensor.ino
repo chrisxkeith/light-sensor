@@ -136,6 +136,37 @@ void TimeSupport::publishJson() {
 }
 TimeSupport    timeSupport(-8, "PST");
 
+class UptimeMonitor {
+  private:
+    long lastHeartBeat = 0;
+    const int HEARTBEAT_INTERVAL_IN_MINUTES = 10;
+
+    void getMinutes() {
+      String len = "Duration in minutes from EEPROM : ";
+      long minutes;
+      EEPROM.get(0, minutes);
+      len.concat(minutes);
+      Utils::publish("Message", len);
+    }
+
+  public:
+    void setupEEPROM() {
+      String len("EEPROM.length() : ");
+      len.concat(EEPROM.length());
+      Utils::publish("Message", len);
+      getMinutes();
+    }
+
+    void writeEEPROM() {
+      if (millis() - lastHeartBeat > 1000 * 60 * HEARTBEAT_INTERVAL_IN_MINUTES) {
+        long minutes = millis() / 1000 / 60;
+        EEPROM.put(0, minutes);
+        lastHeartBeat = millis();
+      }
+    }
+};
+UptimeMonitor uptimeMonitor;
+
 // getSettings() is already defined somewhere.
 int pubSettings(String command) {
     if (command.compareTo("") == 0) {
@@ -150,7 +181,7 @@ int pubSettings(String command) {
 
 void publishVal(int value) {
   String s(value);
-  Particle.publish("Light sensor", s.c_str(), PRIVATE);
+  Utils::publish("Light sensor", s);
 }
 
 int nSamples = 0;
@@ -161,7 +192,7 @@ int publishData(String command) {
   msg.concat("; total = ");
   msg.concat(total);
   msg.concat(";");
-  Particle.publish("Message", msg, 1, PRIVATE);
+  Utils::publish("Message", msg);
 
   int value = (int)round(total / nSamples);
   publishVal(value);
@@ -174,19 +205,20 @@ int lastHour = -1;
 void publishWithMessage() {
   publishData("");
   lastHour = Time.hour();
-  Particle.publish("Message", "Next publish at the top of the hour.", 1, PRIVATE);
+  Utils::publish("Message", "Next publish at the top of the hour.");
 }
 
 void setup() {
-  Particle.publish("Message", "Started setup...", 1, PRIVATE);
+  Utils::publish("Message", "Started setup...");
   Particle.function("publishData", publishData);
   Particle.function("getSettings", pubSettings);
 
   pinMode(A0, INPUT);
   publishVal(analogRead(A0));
   lastHour = Time.hour();
-  Particle.publish("Message", "Next publish at the top of the hour.", 1, PRIVATE);
-  Particle.publish("Message", "Finished setup...", 1, PRIVATE);
+  Utils::publish("Message", "Next publish at the top of the hour.");
+  uptimeMonitor.setupEEPROM();
+  Utils::publish("Message", "Finished setup...");
 }
 
 void loop() {
@@ -196,4 +228,5 @@ void loop() {
   if (Time.minute() == 0 && lastHour != Time.hour()) {
     publishWithMessage();
   }
+  uptimeMonitor.writeEEPROM();
 }

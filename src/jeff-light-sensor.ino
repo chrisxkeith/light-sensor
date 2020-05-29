@@ -80,10 +80,12 @@ void Utils::publishJson() {
     publish("Utils json", json);
 }
 String Utils::getName() {
-  String id = System.deviceID();
   String location = "Unknown";
+  String id = System.deviceID();
   if (id.equals("1f0027001347363336383437")) {
     location = "Light sensor";
+  } else if (id.equals("2a0026000947363335343832")) {
+    location = "Jeff Light sensor";
   }
   return location;
 }
@@ -181,7 +183,7 @@ int pubSettings(String command) {
 
 void publishVal(int value) {
   String s(value);
-  Utils::publish("Light sensor", s);
+  Utils::publish(Utils::getName(), s);
 }
 
 int nSamples = 0;

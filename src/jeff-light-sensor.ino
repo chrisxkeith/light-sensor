@@ -188,18 +188,21 @@ void publishVal(int value) {
 
 int nSamples = 0;
 double total = 0.0;
+double sumOfLoopTimes = 0.0;
+
 int publishData(String command) {
-  String msg("nSamples = ");
-  msg.concat(nSamples);
-  msg.concat("; total = ");
-  msg.concat(total);
-  msg.concat(";");
-  Utils::publish("Message", msg);
+  String json("{");
+  JSonizer::addFirstSetting(json, "nSamples", String(nSamples));
+  JSonizer::addSetting(json, "total", String(total));
+  JSonizer::addSetting(json, "sumOfLoopTimes", String(sumOfLoopTimes));
+  json.concat("}");
+  Utils::publish("Message", json);
 
   int value = (int)round(total / nSamples);
   publishVal(value);
   nSamples = 0;
   total = 0.0;
+  sumOfLoopTimes = 0.0;
   return 1;
 }
 
@@ -223,10 +226,19 @@ void setup() {
   Utils::publish("Message", "Finished setup...");
 }
 
+long previousMillis = -1;
+
 void loop() {
   timeSupport.handleTime();
   total += analogRead(A0);
   nSamples++;
+
+  long nowMillis = millis();
+  if (previousMillis > 0) {
+    sumOfLoopTimes += (nowMillis - previousMillis);
+  }
+  previousMillis = nowMillis;
+
   if (Time.minute() == 0 && lastHour != Time.hour()) {
     publishWithMessage();
   }

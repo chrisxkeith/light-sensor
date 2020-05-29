@@ -219,7 +219,7 @@ void setup() {
   publishVal(analogRead(A0));
   lastHour = Time.hour();
   Utils::publish("Message", "Next publish at the top of the hour.");
-  uptimeMonitor.setupEEPROM();
+//  uptimeMonitor.setupEEPROM();
   Utils::publish("Message", "Finished setup...");
 }
 
@@ -230,5 +230,5 @@ void loop() {
   if (Time.minute() == 0 && lastHour != Time.hour()) {
     publishWithMessage();
   }
-  uptimeMonitor.writeEEPROM();
+//  uptimeMonitor.writeEEPROM();
 }

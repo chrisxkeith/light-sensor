@@ -226,6 +226,7 @@ void setup() {
   sample();
   pubData("");
   clear();
+  pubSettings("");
   Utils::publish("Message", "Finished setup...");
 }
 

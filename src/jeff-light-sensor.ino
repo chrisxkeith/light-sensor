@@ -79,16 +79,6 @@ void Utils::publishJson() {
     json.concat("}");
     publish("Utils json", json);
 }
-String Utils::getName() {
-  String location = "Unknown";
-  String id = System.deviceID();
-  if (id.equals("1f0027001347363336383437")) {
-    location = "Light sensor";
-  } else if (id.equals("2a0026000947363335343832")) {
-    location = "Jeff Light sensor";
-  }
-  return location;
-}
 
 String TimeSupport::getSettings() {
     String json("{");
@@ -138,36 +128,59 @@ void TimeSupport::publishJson() {
 }
 TimeSupport    timeSupport(-8, "PST");
 
-class UptimeMonitor {
+class Sensor {
   private:
-    long lastHeartBeat = 0;
-    const int HEARTBEAT_INTERVAL_IN_MINUTES = 10;
+    int     pin;
+    String  name;
+    int     nSamples;
+    double  total;
 
-    void getMinutes() {
-      String len = "Duration in minutes from EEPROM : ";
-      long minutes;
-      EEPROM.get(0, minutes);
-      len.concat(minutes);
-      Utils::publish("Message", len);
+    int getValue() {
+        return round(total / nSamples);
     }
 
   public:
-    void setupEEPROM() {
-      String len("EEPROM.length() : ");
-      len.concat(EEPROM.length());
-      Utils::publish("Message", len);
-      getMinutes();
+    Sensor(int pin, String name) {
+      this->pin = pin;
+      this->name = name;
+      clear();
+      pinMode(pin, INPUT);
+    }
+    
+    void sample() {
+      if (pin >= A0 && pin <= A5) {
+          total += analogRead(pin);
+      } else {
+          total += digitalRead(pin);
+      }
+      nSamples++;
+    }
+    
+    void clear() {
+      nSamples = 0;
+      total = 0.0;
     }
 
-    void writeEEPROM() {
-      if (millis() - lastHeartBeat > 1000 * 60 * HEARTBEAT_INTERVAL_IN_MINUTES) {
-        long minutes = millis() / 1000 / 60;
-        EEPROM.put(0, minutes);
-        lastHeartBeat = millis();
-      }
+    int publishState() {
+      String json("{");
+      JSonizer::addFirstSetting(json, "name", name);
+      JSonizer::addSetting(json, "nSamples", String(nSamples));
+      JSonizer::addSetting(json, "total", String(total));
+      json.concat("}");
+      Utils::publish("Message", json);
+      return 1;
+    }
+
+    void publishData() {
+      Utils::publish(name, String(getValue()));
     }
 };
-UptimeMonitor uptimeMonitor;
+
+const String cks = "1f0027001347363336383437";
+const String jeffs = "2a0026000947363335343832";
+
+Sensor lightSensor1(A0, (System.deviceID().equals(cks)) ? "Light sensor" : "Jeff Light sensor");
+Sensor lightSensor2(A1, "Light sensor (10K)");
 
 // getSettings() is already defined somewhere.
 int pubSettings(String command) {
@@ -181,66 +194,47 @@ int pubSettings(String command) {
     return 1;
 }
 
-void publishVal(int value) {
-  String s(value);
-  Utils::publish(Utils::getName(), s);
-}
-
-int nSamples = 0;
-double total = 0.0;
-double sumOfLoopTimes = 0.0;
-
-int publishData(String command) {
-  String json("{");
-  JSonizer::addFirstSetting(json, "nSamples", String(nSamples));
-  JSonizer::addSetting(json, "total", String(total));
-  JSonizer::addSetting(json, "sumOfLoopTimes", String(sumOfLoopTimes));
-  json.concat("}");
-  Utils::publish("Message", json);
-
-  int value = (int)round(total / nSamples);
-  publishVal(value);
-  nSamples = 0;
-  total = 0.0;
-  sumOfLoopTimes = 0.0;
+int pubData(String command) {
+  lightSensor1.publishState();
+  lightSensor1.publishData();
+  if (System.deviceID().equals(cks)) {
+    lightSensor2.publishState();
+    lightSensor2.publishData();
+  }
   return 1;
 }
 
-int lastHour = -1;
-void publishWithMessage() {
-  publishData("");
-  lastHour = Time.hour();
-  Utils::publish("Message", "Next publish at the top of the hour.");
+void sample() {
+  lightSensor1.sample();
+  if (System.deviceID().equals(cks)) {
+    lightSensor2.sample();
+  }
 }
 
+void clear() {
+  lightSensor1.clear();
+  if (System.deviceID().equals(cks)) {
+    lightSensor2.clear();
+  }
+}
+
+int lastHour = -1;
 void setup() {
   Utils::publish("Message", "Started setup...");
-  Particle.function("publishData", publishData);
   Particle.function("getSettings", pubSettings);
-
-  pinMode(A0, INPUT);
-  publishVal(analogRead(A0));
-  lastHour = Time.hour();
-  Utils::publish("Message", "Next publish at the top of the hour.");
-//  uptimeMonitor.setupEEPROM();
+  Particle.function("getData", pubData);
+  sample();
+  pubData("");
+  clear();
   Utils::publish("Message", "Finished setup...");
 }
 
-long previousMillis = -1;
-
 void loop() {
   timeSupport.handleTime();
-  total += analogRead(A0);
-  nSamples++;
-
-  long nowMillis = millis();
-  if (previousMillis > 0) {
-    sumOfLoopTimes += (nowMillis - previousMillis);
-  }
-  previousMillis = nowMillis;
-
+  sample();
   if (Time.minute() == 0 && lastHour != Time.hour()) {
-    publishWithMessage();
+    pubData("");
+    clear();
+    lastHour = Time.hour();
   }
-//  uptimeMonitor.writeEEPROM();
 }

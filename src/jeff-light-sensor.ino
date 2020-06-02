@@ -218,11 +218,24 @@ void clear() {
   }
 }
 
+int pubConsole(String paramStr) {
+    const unsigned int  BUFFER_SIZE = 64;       // Maximum of 63 chars in an argument. +1 to include null terminator
+    char                paramBuf[BUFFER_SIZE];  // Pre-allocate buffer for incoming args
+
+    paramStr.toCharArray(paramBuf, BUFFER_SIZE);
+    char *pch = strtok(paramBuf, "=");
+    String event(pch);
+    pch = strtok (NULL, ",");
+    Utils::publish(event, String(pch));
+    return 1;
+}
+
 int lastHour = -1;
 void setup() {
   Utils::publish("Message", "Started setup...");
   Particle.function("getSettings", pubSettings);
   Particle.function("getData", pubData);
+  Particle.function("pubFromCon", pubConsole);
   sample();
   pubData("");
   clear();

@@ -176,11 +176,12 @@ class Sensor {
     }
 };
 
-const String cks = "1f0027001347363336383437";
-const String jeffs = "2a0026000947363335343832";
+const String cks_photon_id = "1f0027001347363336383437";
+const String jeffs_photon_id = "2a0026000947363335343832";
 
-Sensor lightSensor1(A0, (System.deviceID().equals(cks)) ? "Light sensor" : "Jeff Light sensor");
+Sensor lightSensor1(A0, (System.deviceID().equals(cks_photon_id)) ? "Light sensor" : "Jeff Light sensor");
 Sensor lightSensor2(A1, "Light sensor (10K)");
+Sensor lightSensor3(A2, "Light sensor (220)");
 
 // getSettings() is already defined somewhere.
 int pubSettings(String command) {
@@ -197,27 +198,32 @@ int pubSettings(String command) {
 int pubData(String command) {
   lightSensor1.publishState();
   lightSensor1.publishData();
-  if (System.deviceID().equals(cks)) {
+  if (System.deviceID().equals(cks_photon_id)) {
     lightSensor2.publishState();
     lightSensor2.publishData();
+    lightSensor3.publishState();
+    lightSensor3.publishData();
   }
   return 1;
 }
 
 void sample() {
   lightSensor1.sample();
-  if (System.deviceID().equals(cks)) {
+  if (System.deviceID().equals(cks_photon_id)) {
     lightSensor2.sample();
+    lightSensor3.sample();
   }
 }
 
 void clear() {
   lightSensor1.clear();
-  if (System.deviceID().equals(cks)) {
+  if (System.deviceID().equals(cks_photon_id)) {
     lightSensor2.clear();
+    lightSensor3.clear();
   }
 }
 
+// Use Particle console to publish an event, usually for the server to pick up.
 int pubConsole(String paramStr) {
     const unsigned int  BUFFER_SIZE = 64;       // Maximum of 63 chars in an argument. +1 to include null terminator
     char                paramBuf[BUFFER_SIZE];  // Pre-allocate buffer for incoming args

@@ -10,9 +10,9 @@ class JSonizer {
     static String toString(bool b);
 };
 
+int publishRateInSeconds;
 class Utils {
   public:
-    static const int publishRateInSeconds;
     static bool publishDelay;
     static int setInt(String command, int& i, int lower, int upper);
     static void publish(String event, String data);
@@ -56,7 +56,6 @@ String JSonizer::toString(bool b) {
     return "false";
 }
 
-const int Utils::publishRateInSeconds = 5;
 bool Utils::publishDelay = true;
 int Utils::setInt(String command, int& i, int lower, int upper) {
     int tempMin = command.toInt();
@@ -72,10 +71,14 @@ void Utils::publish(String event, String data) {
       delay(1000);
     }
 }
+system_tick_t lastPublishInSeconds = 0;
+
 void Utils::publishJson() {
     String json("{");
     JSonizer::addFirstSetting(json, "githubHash", githubHash);
     JSonizer::addSetting(json, "githubRepo", "https://github.com/chrisxkeith/light-sensor");
+    JSonizer::addSetting(json, "lastPublishInSeconds ", String(lastPublishInSeconds));
+    JSonizer::addSetting(json, "publishRateInSeconds", String(publishRateInSeconds));
     json.concat("}");
     publish("Utils json", json);
 }
@@ -196,13 +199,19 @@ int pubSettings(String command) {
 }
 
 int pubData(String command) {
-  lightSensor1.publishState();
   lightSensor1.publishData();
   if (System.deviceID().equals(cks_photon_id)) {
-    lightSensor2.publishState();
     lightSensor2.publishData();
-    lightSensor3.publishState();
     lightSensor3.publishData();
+  }
+  return 1;
+}
+
+int pubState(String command) {
+  lightSensor1.publishState();
+  if (System.deviceID().equals(cks_photon_id)) {
+    lightSensor2.publishState();
+    lightSensor3.publishState();
   }
   return 1;
 }
@@ -236,13 +245,20 @@ int pubConsole(String paramStr) {
     return 1;
 }
 
-int lastHour = -1;
+int setPubRate(String command) {
+  Utils::setInt(command, publishRateInSeconds, 1, 60 * 60); // don't allow publish rate > 1 hour.
+  return 1;
+}
+
 void setup() {
   Utils::publish("Message", "Started setup...");
   Particle.function("getSettings", pubSettings);
   Particle.function("getData", pubData);
   Particle.function("pubFromCon", pubConsole);
+  Particle.function("setPubRate", setPubRate);
+  Particle.function("pubState", pubState);
   sample();
+  lastPublishInSeconds = millis() / 1000;
   pubData("");
   clear();
   pubSettings("");
@@ -252,9 +268,9 @@ void setup() {
 void loop() {
   timeSupport.handleTime();
   sample();
-  if (Time.minute() == 0 && lastHour != Time.hour()) {
+  if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
+    lastPublishInSeconds = millis() / 1000;
     pubData("");
     clear();
-    lastHour = Time.hour();
   }
 }

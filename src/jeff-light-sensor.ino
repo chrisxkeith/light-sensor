@@ -10,7 +10,7 @@ class JSonizer {
     static String toString(bool b);
 };
 
-int publishRateInSeconds;
+int publishRateInSeconds = 10;
 class Utils {
   public:
     static bool publishDelay;

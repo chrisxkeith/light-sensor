@@ -1,5 +1,5 @@
 
-const String githubHash = "9bf4d27ddad8bc0889cc52ff720377753237b582";
+const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
 
 #include <limits.h>
 
@@ -72,6 +72,8 @@ void Utils::publish(String event, String data) {
     }
 }
 system_tick_t lastPublishInSeconds = 0;
+unsigned int lastDisplayInSeconds = 0;
+unsigned int displayIntervalInSeconds = 2;
 
 void Utils::publishJson() {
     String json("{");
@@ -79,6 +81,8 @@ void Utils::publishJson() {
     JSonizer::addSetting(json, "githubRepo", "https://github.com/chrisxkeith/light-sensor");
     JSonizer::addSetting(json, "lastPublishInSeconds ", String(lastPublishInSeconds));
     JSonizer::addSetting(json, "publishRateInSeconds", String(publishRateInSeconds));
+    JSonizer::addSetting(json, "lastDisplayInSeconds", String(lastDisplayInSeconds));
+    JSonizer::addSetting(json, "displayIntervalInSeconds", String(displayIntervalInSeconds));
     json.concat("}");
     publish("Utils json", json);
 }
@@ -207,9 +211,6 @@ void display_digits(unsigned int num) {
   }
   tm1637.display(timeDisp);
 }
-
-unsigned int lastDisplayInSeconds = 0;
-unsigned int displayIntervalInSeconds = 2;
 
 void display_at_interval() {
   if (System.deviceID().equals(jeffs_photon_id)) {

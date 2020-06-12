@@ -1,5 +1,5 @@
 
-const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
+const String githubHash = "9bf4d27ddad8bc0889cc52ff720377753237b582";
 
 #include <limits.h>
 
@@ -138,10 +138,6 @@ class Sensor {
     int     nSamples;
     double  total;
 
-    int getValue() {
-        return round(total / nSamples);
-    }
-
   public:
     Sensor(int pin, String name) {
       this->pin = pin;
@@ -177,6 +173,10 @@ class Sensor {
     void publishData() {
       Utils::publish(name, String(getValue()));
     }
+
+    int getValue() {
+        return round(total / nSamples);
+    }
 };
 
 const String cks_photon_id = "1f0027001347363336383437";
@@ -185,6 +185,40 @@ const String jeffs_photon_id = "2a0026000947363335343832";
 Sensor lightSensor1(A0, (System.deviceID().equals(cks_photon_id)) ? "Light sensor" : "Jeff Light sensor");
 Sensor lightSensor2(A1, "Light sensor (10K)");
 Sensor lightSensor3(A2, "Light sensor (220)");
+
+#include "TM1637.h"
+
+TM1637 tm1637(2, 3);
+
+void setup_display() {
+  tm1637.init();
+  tm1637.set(BRIGHTEST); // BRIGHT_TYPICAL = 2, BRIGHT_DARKEST = 0, BRIGHTEST = 7;
+}
+
+void display_digits(unsigned int num) {
+  int8_t timeDisp[] = {14, 14, 14, 14};  // EEEE
+  if (num < 10000) {
+    timeDisp[0] =  num / 1000;
+    num = num % 1000;
+    timeDisp[1] = num / 100;
+    num = num % 100;
+    timeDisp[2] = num / 10;
+    timeDisp[3] =  num % 10;
+  }
+  tm1637.display(timeDisp);
+}
+
+unsigned int lastDisplayInSeconds = 0;
+unsigned int displayIntervalInSeconds = 2;
+
+void display_at_interval() {
+  if (System.deviceID().equals(jeffs_photon_id)) {
+    if ((lastDisplayInSeconds + displayIntervalInSeconds) <= (millis() / 1000)) {
+      lastDisplayInSeconds = millis() / 1000;
+      display_digits(lightSensor1.getValue());
+    }
+  }
+}
 
 // getSettings() is already defined somewhere.
 int pubSettings(String command) {
@@ -262,12 +296,14 @@ void setup() {
   pubData("");
   clear();
   pubSettings("");
+  setup_display();
   Utils::publish("Message", "Finished setup...");
 }
 
 void loop() {
   timeSupport.handleTime();
   sample();
+  display_at_interval();
   if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
     lastPublishInSeconds = millis() / 1000;
     pubData("");

@@ -183,12 +183,153 @@ class Sensor {
     }
 };
 
+#include <SparkFunMicroOLED.h>
+#include <math.h>
+
+class OLEDWrapper {
+  public:
+    MicroOLED* oled = new MicroOLED();
+
+    OLEDWrapper() {
+        oled->begin();    // Initialize the OLED
+        oled->clear(ALL); // Clear the display's internal memory
+        oled->display();  // Display what's in the buffer (splashscreen)
+        delay(1000);     // Delay 1000 ms
+        oled->clear(PAGE); // Clear the buffer.
+    }
+
+    void display(String title, int font, uint8_t x, uint8_t y) {
+        oled->clear(PAGE);
+        oled->setFontType(font);
+        oled->setCursor(x, y);
+        oled->print(title);
+        oled->display();
+    }
+
+    void display(String title, int font) {
+        display(title, font, 0, 0);
+    }
+
+    void invert(bool invert) {
+      oled->invert(invert);
+    }
+
+    void displayNumber(String s) {
+        // To reduce OLED burn-in, shift the digits (if possible) on the odd minutes.
+        int x = 0;
+        if (Time.minute() % 2) {
+            const int MAX_DIGITS = 5;
+            if (s.length() < MAX_DIGITS) {
+                const int FONT_WIDTH = 12;
+                x += FONT_WIDTH * (MAX_DIGITS - s.length());
+            }
+        }
+        display(s, 3, x, 0);
+    }
+
+    bool errShown = false;
+    void verify(int xStart, int yStart, int xi, int yi) {
+      if (!errShown && (xi >= oled->getLCDWidth() || yi >= oled->getLCDHeight())) {
+        String json("{");
+        JSonizer::addSetting(json, "xStart", String(xStart));
+        JSonizer::addSetting(json, "yStart", String(yStart));
+        JSonizer::addSetting(json, "xi", String(xi));
+        JSonizer::addSetting(json, "yi", String(yi));
+        json.concat("}");
+        Utils::publish("super-pixel coordinates out of range", json);
+        errShown = true;
+      }
+    }
+
+   void superPixel(int xStart, int yStart, int xSuperPixelSize, int ySuperPixelSize, int pixelVal,
+         int left, int right, int top, int bottom) {
+     int pixelSize = xSuperPixelSize * ySuperPixelSize;
+     if (pixelVal < 0) {
+       pixelVal = 0;
+     } else if (pixelVal >= pixelSize) {
+       pixelVal = pixelSize - 1;
+     }
+     for (int xi = xStart; xi < xStart + xSuperPixelSize; xi++) {
+       for (int yi = yStart; yi < yStart + ySuperPixelSize; yi++) {
+         verify(xStart, yStart, xi, yi);
+
+         // Value between 1 and pixelSize - 2,
+         // so pixelVal of 0 will have all pixels off
+         // and pixelVal of pixelSize - 1 will have all pixels on. 
+         int r = (rand() % (pixelSize - 2)) + 1;
+         if (r < pixelVal) { // lower value maps to white pixel.
+           oled->pixel(xi, yi);
+         }
+       }
+     }
+   }
+
+    void publishJson() {
+        String json("{");
+        JSonizer::addFirstSetting(json, "getLCDWidth()", String(oled->getLCDWidth()));
+        JSonizer::addSetting(json, "getLCDHeight()", String(oled->getLCDHeight()));
+        json.concat("}");
+        Utils::publish("OLED", json);
+    }
+
+    void testPattern() {
+      int xSuperPixelSize = 6;	
+      int ySuperPixelSize = 6;
+      int pixelSize = xSuperPixelSize * ySuperPixelSize; 
+      float diagonalDistance = sqrt((float)(xSuperPixelSize * xSuperPixelSize + ySuperPixelSize * ySuperPixelSize));
+      float factor = (float)pixelSize / diagonalDistance;
+      int pixelVals[64];
+      for (int i = 0; i < 64; i++) {
+        int x = (i % 8);
+        int y = (i / 8);
+        pixelVals[i] = (int)(round(sqrt((float)(x * x + y * y)) * factor));
+      }
+      displayArray(xSuperPixelSize, ySuperPixelSize, pixelVals);
+      delay(5000);
+      displayArray(xSuperPixelSize, ySuperPixelSize, pixelVals);
+      delay(5000);	
+    }
+
+    void displayArray(int xSuperPixelSize, int ySuperPixelSize, int pixelVals[]) {
+      oled->clear(PAGE);
+      for (int i = 0; i < 64; i++) {
+        int x = (i % 8) * xSuperPixelSize;
+        int y = (i / 8) * ySuperPixelSize;
+        int left = x;
+        int right = x;
+        int top = y;
+        int bottom = y;
+        if (x > 0) {
+          left = pixelVals[i - 1];
+        }
+        if (x < 7) {
+          right = pixelVals[i + 1];
+        }
+        if (y > 0) {
+          top = pixelVals[i - 8];
+        }
+        if (y < 7) {
+          top = pixelVals[i + 8];
+        }
+        // This (admittedly confusing) switcheroo of x and y axes is to make the orientation
+        // of the sensor (with logo reading correctly) match the orientation of the OLED.
+        superPixel(y, x, ySuperPixelSize, xSuperPixelSize, pixelVals[i],
+            left, right, top, bottom);
+      }
+      oled->display();
+    }
+
+    void clear() {
+      oled->clear(ALL);
+    }
+};
+
+OLEDWrapper oledWrapper;
+
 Sensor lightSensor1(A0,  "Light sensor");
 
-void setup_display() {
-}
-
 void display_digits(unsigned int num) {
+  oledWrapper.displayNumber(String(num));
 }
 
 void display_at_interval() {
@@ -258,7 +399,6 @@ void setup() {
   pubData("");
   clear();
   pubSettings("");
-  setup_display();
   Utils::publish("Message", "Finished setup...");
 }
 

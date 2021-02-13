@@ -10,7 +10,7 @@ class JSonizer {
     static String toString(bool b);
 };
 
-int publishRateInSeconds = 10;
+int publishRateInSeconds = 5;
 class Utils {
   public:
     static bool publishDelay;
@@ -183,41 +183,18 @@ class Sensor {
     }
 };
 
-const String cks_photon_id = "1f0027001347363336383437";
-const String jeffs_photon_id = "2a0026000947363335343832";
-
-Sensor lightSensor1(A0, (System.deviceID().equals(cks_photon_id)) ? "Light sensor" : "Jeff Light sensor");
-Sensor lightSensor2(A1, "Light sensor (10K)");
-Sensor lightSensor3(A2, "Light sensor (220)");
-
-#include "TM1637.h"
-
-TM1637 tm1637(2, 3);
+Sensor lightSensor1(A0,  "Light sensor");
 
 void setup_display() {
-  tm1637.init();
-  tm1637.set(BRIGHTEST); // BRIGHT_TYPICAL = 2, BRIGHT_DARKEST = 0, BRIGHTEST = 7;
 }
 
 void display_digits(unsigned int num) {
-  int8_t timeDisp[] = {14, 14, 14, 14};  // EEEE
-  if (num < 10000) {
-    timeDisp[0] =  num / 1000;
-    num = num % 1000;
-    timeDisp[1] = num / 100;
-    num = num % 100;
-    timeDisp[2] = num / 10;
-    timeDisp[3] =  num % 10;
-  }
-  tm1637.display(timeDisp);
 }
 
 void display_at_interval() {
-  if (System.deviceID().equals(jeffs_photon_id)) {
-    if ((lastDisplayInSeconds + displayIntervalInSeconds) <= (millis() / 1000)) {
-      lastDisplayInSeconds = millis() / 1000;
-      display_digits(lightSensor1.getValue());
-    }
+  if ((lastDisplayInSeconds + displayIntervalInSeconds) <= (millis() / 1000)) {
+    lastDisplayInSeconds = millis() / 1000;
+    display_digits(lightSensor1.getValue());
   }
 }
 
@@ -235,36 +212,20 @@ int pubSettings(String command) {
 
 int pubData(String command) {
   lightSensor1.publishData();
-  if (System.deviceID().equals(cks_photon_id)) {
-    lightSensor2.publishData();
-    lightSensor3.publishData();
-  }
   return 1;
 }
 
 int pubState(String command) {
   lightSensor1.publishState();
-  if (System.deviceID().equals(cks_photon_id)) {
-    lightSensor2.publishState();
-    lightSensor3.publishState();
-  }
   return 1;
 }
 
 void sample() {
   lightSensor1.sample();
-  if (System.deviceID().equals(cks_photon_id)) {
-    lightSensor2.sample();
-    lightSensor3.sample();
-  }
 }
 
 void clear() {
   lightSensor1.clear();
-  if (System.deviceID().equals(cks_photon_id)) {
-    lightSensor2.clear();
-    lightSensor3.clear();
-  }
 }
 
 // Use Particle console to publish an event, usually for the server to pick up.

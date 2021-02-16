@@ -332,11 +332,29 @@ void display_digits(unsigned int num) {
   oledWrapper.displayNumber(String(num));
 }
 
-void display_at_interval() {
-  if ((lastDisplayInSeconds + displayIntervalInSeconds) <= (millis() / 1000)) {
-    lastDisplayInSeconds = millis() / 1000;
-    display_digits(lightSensor1.getValue());
+const int THRESHOLD = 350;
+bool on = false;
+int previousValue = 0;
+
+void display_on_oled() {
+  int value = lightSensor1.getValue();
+  if (value > THRESHOLD != on) {
+    String d("on: ");
+    d.concat(String(on));
+    d.concat(", ");
+    d.concat(previousValue);
+    d.concat("->");
+    d.concat(value);
+    Utils::publish("Diagnostic", d);
+    on = !on;
+    oledWrapper.invert(on);
+    if (on) {
+      oledWrapper.display(String("on"), 1, 25, 18);
+    } else {
+      oledWrapper.clear();
+    }
   }
+  previousValue = value;
 }
 
 // getSettings() is already defined somewhere.
@@ -399,13 +417,17 @@ void setup() {
   pubData("");
   clear();
   pubSettings("");
+  oledWrapper.clear();
+  oledWrapper.display(githubHash, 1, 0, 0);
+  delay(5000);
+  oledWrapper.clear();
   Utils::publish("Message", "Finished setup...");
 }
 
 void loop() {
   timeSupport.handleTime();
   sample();
-  display_at_interval();
+  display_on_oled();
   if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
     lastPublishInSeconds = millis() / 1000;
     pubData("");

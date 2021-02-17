@@ -1,5 +1,5 @@
-
 const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
+const bool doDebug = false;
 
 #include <limits.h>
 
@@ -328,6 +328,44 @@ OLEDWrapper oledWrapper;
 
 Sensor lightSensor1(A0,  "Light sensor");
 
+class Spinner {
+  private:
+    int middleX = oledWrapper.oled->getLCDWidth() / 2;
+    int middleY = oledWrapper.oled->getLCDHeight() / 2;
+    int xEnd, yEnd;
+    int lineWidth = min(middleX, middleY);
+    int color;
+    int deg;
+
+  public:
+    Spinner() {
+      init();
+    }
+
+    void display() {
+      xEnd = lineWidth * cos(deg * M_PI / 180.0);
+      yEnd = lineWidth * sin(deg * M_PI / 180.0);
+
+      oledWrapper.oled->line(middleX, middleY, middleX + xEnd, middleY + yEnd, color, NORM);
+      oledWrapper.oled->display();
+      deg++;
+      if (deg >= 360) {
+        deg = 0;
+        if (color == WHITE) {
+          color = BLACK;
+        } else {
+          color = WHITE;
+        }
+      }
+    }
+
+    void init() {
+      color = WHITE;
+      deg = 0;
+    }
+};
+Spinner spinner;
+
 void display_digits(unsigned int num) {
   oledWrapper.displayNumber(String(num));
 }
@@ -338,7 +376,7 @@ int previousValue = 0;
 
 void display_on_oled() {
   int value = lightSensor1.getValue();
-  if (value > THRESHOLD != on) {
+  if ((value > THRESHOLD) != on) {
     String d("on: ");
     d.concat(String(on));
     d.concat(", ");
@@ -347,11 +385,14 @@ void display_on_oled() {
     d.concat(value);
     Utils::publish("Diagnostic", d);
     on = !on;
-    oledWrapper.invert(on);
+    oledWrapper.clear();
     if (on) {
-      oledWrapper.display(String("on"), 1, 25, 18);
-    } else {
-      oledWrapper.clear();
+      spinner.init();
+      spinner.display();
+    }
+  } else {
+    if (on) {
+      spinner.display();
     }
   }
   previousValue = value;
@@ -418,9 +459,6 @@ void setup() {
   clear();
   pubSettings("");
   oledWrapper.clear();
-  oledWrapper.display(githubHash, 1, 0, 0);
-  delay(5000);
-  oledWrapper.clear();
   Utils::publish("Message", "Finished setup...");
 }
 
@@ -428,9 +466,11 @@ void loop() {
   timeSupport.handleTime();
   sample();
   display_on_oled();
-  if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
-    lastPublishInSeconds = millis() / 1000;
-    pubData("");
-    clear();
+  if (doDebug || (!on)) {
+    if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
+      lastPublishInSeconds = millis() / 1000;
+      pubData("");
+      clear();
+    }
   }
 }

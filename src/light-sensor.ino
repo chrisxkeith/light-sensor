@@ -1,5 +1,4 @@
 const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
-const bool doDebug = false;
 
 #include <limits.h>
 
@@ -10,7 +9,7 @@ class JSonizer {
     static String toString(bool b);
 };
 
-int publishRateInSeconds = 5;
+int publishRateInSeconds = 2;
 class Utils {
   public:
     static bool publishDelay;
@@ -342,6 +341,7 @@ class Spinner {
       init();
     }
 
+    bool doInvert = true;
     void display() {
       xEnd = lineWidth * cos(deg * M_PI / 180.0);
       yEnd = lineWidth * sin(deg * M_PI / 180.0);
@@ -466,11 +466,9 @@ void loop() {
   timeSupport.handleTime();
   sample();
   display_on_oled();
-  if (doDebug || (!on)) {
-    if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
-      lastPublishInSeconds = millis() / 1000;
-      pubData("");
-      clear();
-    }
+  if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
+    lastPublishInSeconds = millis() / 1000;
+    pubData("");
+    clear();
   }
 }

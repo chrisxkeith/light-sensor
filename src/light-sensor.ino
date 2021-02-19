@@ -1,4 +1,5 @@
 const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
+const bool debug = false;
 
 #include <limits.h>
 
@@ -9,7 +10,7 @@ class JSonizer {
     static String toString(bool b);
 };
 
-int publishRateInSeconds = 2;
+int publishRateInSeconds = 10;
 class Utils {
   public:
     static bool publishDelay;
@@ -33,6 +34,36 @@ class TimeSupport {
     void handleTime();
     int setTimeZoneOffset(String command);
     void publishJson();
+};
+
+class MillisecondTimer {
+  private:
+    long start;
+    String name;
+  public:
+    MillisecondTimer(String name) {
+      this->name = name;
+      this->name.replace(" ", "_");
+      doReset();
+    }
+
+    ~MillisecondTimer() {
+      publish();
+    }
+
+    void doReset() {
+      start = millis();
+    }
+
+    void publish() {
+      if (debug) {
+        long duration = millis() - start;
+        String json("{");
+        JSonizer::addFirstSetting(json, "milliseconds", String(duration));
+        json.concat("}");
+        Utils::publish("Diagnostic", json);
+      }
+    }
 };
 
 void JSonizer::addFirstSetting(String& json, String key, String val) {
@@ -341,7 +372,6 @@ class Spinner {
       init();
     }
 
-    bool doInvert = true;
     void display() {
       xEnd = lineWidth * cos(deg * M_PI / 180.0);
       yEnd = lineWidth * sin(deg * M_PI / 180.0);

@@ -194,13 +194,17 @@ class Sensor {
       total = 0.0;
     }
 
-    int publishState() {
+    String getState() {
       String json("{");
       JSonizer::addFirstSetting(json, "name", name);
       JSonizer::addSetting(json, "nSamples", String(nSamples));
       JSonizer::addSetting(json, "total", String(total));
       json.concat("}");
-      Utils::publish("Message", json);
+      return json;
+    }
+
+    int publishState() {
+      Utils::publish("Diagnostic", this->getState());
       return 1;
     }
 
@@ -407,7 +411,7 @@ int previousValue = 0;
 void display_on_oled() {
   int value = lightSensor1.getValue();
   if ((value > THRESHOLD) != on) {
-    String d("on: ");
+    String d("previous state: on: ");
     d.concat(String(on));
     d.concat(", ");
     d.concat(previousValue);
@@ -450,8 +454,14 @@ int pubState(String command) {
   return 1;
 }
 
+String previousState = "not set";
 void sample() {
-  lightSensor1.sample();
+  const int SAMPLE_INTERVAL = 1; // Enough for ~10 samples.
+  int start = millis();
+  while (millis() - start < SAMPLE_INTERVAL) {
+    lightSensor1.sample();
+  }
+  previousState = lightSensor1.getState();
 }
 
 void clear() {
@@ -499,6 +509,9 @@ void loop() {
   if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
     lastPublishInSeconds = millis() / 1000;
     pubData("");
-    clear();
+    if (debug) {
+      Utils::publish("Diagnostic", previousState);
+    }
   }
+  clear();
 }

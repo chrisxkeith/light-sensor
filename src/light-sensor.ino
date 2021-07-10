@@ -456,7 +456,9 @@ int pubState(String command) {
 
 String previousState = "not set";
 void sample() {
-  const int SAMPLE_INTERVAL = 1; // Enough for ~10 samples.
+  const int SAMPLES_PER_MILLI = 10; // approximately
+  const int SAMPLES_TO_TAKE = 30;
+  const int SAMPLE_INTERVAL = SAMPLES_TO_TAKE / SAMPLES_PER_MILLI; // too few -> 'flicker', too many -> redraw too slow.
   int start = millis();
   while (millis() - start < SAMPLE_INTERVAL) {
     lightSensor1.sample();

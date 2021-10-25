@@ -404,7 +404,7 @@ void display_digits(unsigned int num) {
   oledWrapper.displayNumber(String(num));
 }
 
-const int THRESHOLD = 350;
+const int THRESHOLD = 175;
 bool on = false;
 int previousValue = 0;
 

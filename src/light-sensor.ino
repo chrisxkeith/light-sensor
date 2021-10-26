@@ -373,7 +373,8 @@ class Spinner {
 
   public:
     Spinner() {
-      init();
+      color = WHITE;
+      deg = 0;
     }
 
     void display() {
@@ -391,11 +392,6 @@ class Spinner {
           color = WHITE;
         }
       }
-    }
-
-    void init() {
-      color = WHITE;
-      deg = 0;
     }
 };
 Spinner spinner;
@@ -421,7 +417,6 @@ void display_on_oled() {
     on = !on;
     oledWrapper.clear();
     if (on) {
-      spinner.init();
       spinner.display();
     }
   } else {

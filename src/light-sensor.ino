@@ -411,7 +411,8 @@ const int THRESHOLD = 175;
 bool on = false;
 int previousValue = 0;
 
-void display_on_oled() {
+bool display_on_oled() {
+  bool changed = false;
   int value = lightSensor1.getValue();
   if ((value > THRESHOLD) != on) {
     String d("previous state: on: ");
@@ -426,12 +427,14 @@ void display_on_oled() {
     if (on) {
       spinner.display();
     }
+    changed = true;
   } else {
     if (on) {
       spinner.display();
     }
   }
   previousValue = value;
+  return changed;
 }
 
 void publishStateJson() {
@@ -524,8 +527,8 @@ void setup() {
 void loop() {
   timeSupport.handleTime();
   sample();
-  display_on_oled();
-  if ((lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
+  bool changed = display_on_oled();
+  if (changed || (lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
     lastPublishInSeconds = millis() / 1000;
     pubData("");
     if (debug) {

@@ -181,6 +181,10 @@ class Sensor {
       pinMode(pin, INPUT);
     }
     
+    String getName() {
+      return this->name;
+    }
+
     void sample() {
       if (pin >= A0 && pin <= A5) {
           total += analogRead(pin);
@@ -210,7 +214,9 @@ class Sensor {
     }
 
     void publishData() {
-      Utils::publish(name, String(getValue()));
+      String eventName(name);
+      eventName.concat(" raw");
+      Utils::publish(eventName, String(getValue()));
     }
 
     int getValue() {
@@ -452,6 +458,10 @@ int pubSettings(String command) {
 
 int pubData(String command) {
   lightSensor1.publishData();
+  String lightStatus(lightSensor1.getName());
+  lightStatus.concat(" is on");
+  bool isOn = (lightSensor1.getValue() > THRESHOLD);
+  Utils::publish(lightStatus, JSonizer::toString(isOn));
   return 1;
 }
 

@@ -86,7 +86,7 @@ String JSonizer::toString(bool b) {
     return "false";
 }
 
-bool Utils::publishDelay = false;
+bool Utils::publishDelay = true;
 int Utils::setInt(String command, int& i, int lower, int upper) {
     int tempMin = command.toInt();
     if (tempMin > lower && tempMin < upper) {
@@ -113,6 +113,7 @@ void Utils::publishJson() {
     JSonizer::addSetting(json, "publishRateInSeconds", String(publishRateInSeconds));
     JSonizer::addSetting(json, "lastDisplayInSeconds", String(lastDisplayInSeconds));
     JSonizer::addSetting(json, "displayIntervalInSeconds", String(displayIntervalInSeconds));
+    JSonizer::addSetting(json, "publishDelay", JSonizer::toString(publishDelay));
     json.concat("}");
     publish("Utils json", json);
 }
@@ -427,10 +428,20 @@ void display_on_oled() {
   previousValue = value;
 }
 
+void publishStateJson() {
+    String json("{");
+    JSonizer::addFirstSetting(json, "THRESHOLD", String(THRESHOLD));
+    JSonizer::addSetting(json, "on", JSonizer::toString(on));
+    JSonizer::addSetting(json, "previousValue", String(previousValue));
+    json.concat("}");
+    Utils::publish("State json", json);
+}
+
 // getSettings() is already defined somewhere.
 int pubSettings(String command) {
     if (command.compareTo("") == 0) {
         Utils::publishJson();
+        publishStateJson();
     } else if (command.compareTo("time") == 0) {
         timeSupport.publishJson();
     } else {
@@ -496,6 +507,7 @@ void setup() {
   clear();
   pubSettings("");
   oledWrapper.clear();
+  publishStateJson();
   Utils::publish("Message", "Finished setup...");
 }
 

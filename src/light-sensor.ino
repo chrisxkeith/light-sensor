@@ -460,7 +460,6 @@ int pubSettings(String command) {
 }
 
 int pubData(String command) {
-  lightSensor1.publishData();
   String lightStatus(lightSensor1.getName());
   lightStatus.concat(" is on");
   bool isOn = (lightSensor1.getValue() > THRESHOLD);

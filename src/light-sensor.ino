@@ -1,5 +1,4 @@
 const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
-const bool debug = false;
 
 #include <limits.h>
 
@@ -10,7 +9,7 @@ class JSonizer {
     static String toString(bool b);
 };
 
-int publishRateInSeconds = 60;
+int publishRateInSeconds = 10;
 class Utils {
   public:
     static bool publishDelay;
@@ -34,36 +33,6 @@ class TimeSupport {
     void handleTime();
     int setTimeZoneOffset(String command);
     void publishJson();
-};
-
-class MillisecondTimer {
-  private:
-    long start;
-    String name;
-  public:
-    MillisecondTimer(String name) {
-      this->name = name;
-      this->name.replace(" ", "_");
-      doReset();
-    }
-
-    ~MillisecondTimer() {
-      publish();
-    }
-
-    void doReset() {
-      start = millis();
-    }
-
-    void publish() {
-      if (debug) {
-        long duration = millis() - start;
-        String json("{");
-        JSonizer::addFirstSetting(json, "milliseconds", String(duration));
-        json.concat("}");
-        Utils::publish("Diagnostic", json);
-      }
-    }
 };
 
 void JSonizer::addFirstSetting(String& json, String key, String val) {
@@ -415,13 +384,12 @@ bool display_on_oled() {
   bool changed = false;
   int value = lightSensor1.getValue();
   if ((value > THRESHOLD) != on) {
-    String d("previous state: on: ");
-    d.concat(String(on));
-    d.concat(", ");
-    d.concat(previousValue);
-    d.concat("->");
-    d.concat(value);
-    Utils::publish("Diagnostic", d);
+    String json("{");
+    JSonizer::addFirstSetting(json, "previous state", (on ? "on" : "off"));
+    JSonizer::addSetting(json, "previousValue", String(previousValue));
+    JSonizer::addSetting(json, "current value", String(value));
+    json.concat("}");
+    Utils::publish("Diagnostic", json);
     on = !on;
     oledWrapper.clear();
     if (on) {
@@ -519,7 +487,6 @@ void setup() {
   clear();
   pubSettings("");
   oledWrapper.clear();
-  publishStateJson();
   Utils::publish("Message", "Finished setup...");
 }
 
@@ -530,9 +497,6 @@ void loop() {
   if (changed || (lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
     lastPublishInSeconds = millis() / 1000;
     pubData("");
-    if (debug) {
-      Utils::publish("Diagnostic", previousState);
-    }
   }
   clear();
 }

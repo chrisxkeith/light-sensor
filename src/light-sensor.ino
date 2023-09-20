@@ -28,8 +28,8 @@ class TimeSupport {
   public:
     int timeZoneOffset;
     TimeSupport(int timeZoneOffset, String timeZoneString);
-    String timeStrZ(time_t t);
-    String nowZ();
+    String timeStr(time_t t);
+    String now();
     void handleTime();
     int setTimeZoneOffset(String command);
     void publishJson();
@@ -92,7 +92,7 @@ String TimeSupport::getSettings() {
     JSonizer::addFirstSetting(json, "lastSyncMillis", String(lastSyncMillis));
     JSonizer::addSetting(json, "timeZoneOffset", String(timeZoneOffset));
     JSonizer::addSetting(json, "timeZoneString", String(timeZoneString));
-    JSonizer::addSetting(json, "internalTime", nowZ());
+    JSonizer::addSetting(json, "internalTime", now());
     json.concat("}");
     return json;
 }
@@ -106,15 +106,15 @@ TimeSupport::TimeSupport(int timeZoneOffset, String timeZoneString) {
     this->lastSyncMillis = millis();
 }
 
-String TimeSupport::timeStrZ(time_t t) {
+String TimeSupport::timeStr(time_t t) {
     String fmt("%a %b %d %H:%M:%S ");
     fmt.concat(timeZoneString);
     fmt.concat(" %Y");
     return Time.format(t, fmt);
 }
 
-String TimeSupport::nowZ() {
-    return timeStrZ(Time.now());
+String TimeSupport::now() {
+    return timeStr(Time.now());
 }
 
 void TimeSupport::handleTime() {
@@ -379,6 +379,7 @@ void display_digits(unsigned int num) {
 const int THRESHOLD = 175;
 bool on = false;
 int previousValue = 0;
+String whenSwitchedToOn = "";
 
 bool display_on_oled() {
   bool changed = false;
@@ -396,9 +397,12 @@ bool display_on_oled() {
       spinner.display();
     }
     changed = true;
+    whenSwitchedToOn = timeSupport.now();
   } else {
     if (on) {
       spinner.display();
+    } else {
+      whenSwitchedToOn = "";
     }
   }
   previousValue = value;
@@ -474,6 +478,11 @@ int setPubRate(String command) {
   return 1;
 }
 
+int getSwitched(String command) {
+  Utils::publish("whenSwitchedToOn", whenSwitchedToOn);
+  return 1;
+}
+
 void setup() {
   Utils::publish("Message", "Started setup...");
   Particle.function("getSettings", pubSettings);
@@ -481,6 +490,7 @@ void setup() {
   Particle.function("pubFromCon", pubConsole);
   Particle.function("setPubRate", setPubRate);
   Particle.function("pubState", pubState);
+  Particle.function("getSwitched", getSwitched);
   sample();
   lastPublishInSeconds = millis() / 1000;
   pubData("");

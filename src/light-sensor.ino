@@ -23,11 +23,10 @@ class TimeSupport {
   private:
     unsigned long ONE_DAY_IN_MILLISECONDS;
     unsigned long lastSyncMillis;
-    String timeZoneString;
     String getSettings();
+    bool isDST();
   public:
-    int timeZoneOffset;
-    TimeSupport(int timeZoneOffset, String timeZoneString);
+    TimeSupport(int timeZoneOffset);
     String timeStr(time_t t);
     String now();
     void handleTime();
@@ -90,26 +89,41 @@ void Utils::publishJson() {
 String TimeSupport::getSettings() {
     String json("{");
     JSonizer::addFirstSetting(json, "lastSyncMillis", String(lastSyncMillis));
-    JSonizer::addSetting(json, "timeZoneOffset", String(timeZoneOffset));
-    JSonizer::addSetting(json, "timeZoneString", String(timeZoneString));
     JSonizer::addSetting(json, "internalTime", now());
     json.concat("}");
     return json;
 }
 
-TimeSupport::TimeSupport(int timeZoneOffset, String timeZoneString) {
-    this->ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
-    this->timeZoneOffset = timeZoneOffset;
-    this->timeZoneString = timeZoneString;
-    Time.zone(timeZoneOffset);
+TimeSupport::TimeSupport(int timeZoneOffset) {
     Particle.syncTime();
     this->lastSyncMillis = millis();
+    Time.zone(timeZoneOffset);
+    if (isDST()) {
+      Time.beginDST();
+    } else {
+      Time.endDST();
+    }
+}
+
+bool TimeSupport::isDST() {
+  int dayOfMonth = Time.day();
+  int month = Time.month();
+  int dayOfWeek = Time.weekday();
+	if (month < 3 || month > 11) {
+		return false;
+	}
+	if (month > 3 && month < 11) {
+		return true;
+	}
+	int previousSunday = dayOfMonth - (dayOfWeek - 1);
+	if (month == 3) {
+		return previousSunday >= 8;
+	}
+	return previousSunday <= 0;
 }
 
 String TimeSupport::timeStr(time_t t) {
-    String fmt("%a %b %d %H:%M:%S ");
-    fmt.concat(timeZoneString);
-    fmt.concat(" %Y");
+    String fmt("%a %b %d %H:%M:%S %Y");
     return Time.format(t, fmt);
 }
 
@@ -118,6 +132,7 @@ String TimeSupport::now() {
 }
 
 void TimeSupport::handleTime() {
+    int ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
     if (millis() - lastSyncMillis > ONE_DAY_IN_MILLISECONDS) {    // If it's been a day since last sync...
                                                             // Request time synchronization from the Particle Cloud
         Particle.syncTime();
@@ -125,15 +140,10 @@ void TimeSupport::handleTime() {
     }
 }
 
-int TimeSupport::setTimeZoneOffset(String command) {
-    timeZoneString = "???";
-    return Utils::setInt(command, timeZoneOffset, -24, 24);
-}
-
 void TimeSupport::publishJson() {
     Utils::publish("TimeSupport", getSettings());
 }
-TimeSupport    timeSupport(-8, "PST");
+TimeSupport    timeSupport(-8);
 
 class Sensor {
   private:
@@ -460,24 +470,6 @@ void clear() {
   lightSensor1.clear();
 }
 
-// Use Particle console to publish an event, usually for the server to pick up.
-int pubConsole(String paramStr) {
-    const unsigned int  BUFFER_SIZE = 64;       // Maximum of 63 chars in an argument. +1 to include null terminator
-    char                paramBuf[BUFFER_SIZE];  // Pre-allocate buffer for incoming args
-
-    paramStr.toCharArray(paramBuf, BUFFER_SIZE);
-    char *pch = strtok(paramBuf, "=");
-    String event(pch);
-    pch = strtok (NULL, ",");
-    Utils::publish(event, String(pch));
-    return 1;
-}
-
-int setPubRate(String command) {
-  Utils::setInt(command, publishRateInSeconds, 1, 60 * 60); // don't allow publish rate > 1 hour.
-  return 1;
-}
-
 int getSwitched(String command) {
   Utils::publish("whenSwitchedToOn", whenSwitchedToOn);
   return 1;
@@ -485,12 +477,10 @@ int getSwitched(String command) {
 
 void setup() {
   Utils::publish("Message", "Started setup...");
-  Particle.function("getSettings", pubSettings);
-  Particle.function("getData", pubData);
-  Particle.function("pubFromCon", pubConsole);
-  Particle.function("setPubRate", setPubRate);
-  Particle.function("pubState", pubState);
-  Particle.function("getSwitched", getSwitched);
+  Particle.function("Settings", pubSettings);
+  Particle.function("SensorData", pubData);
+  Particle.function("SensorState", pubState);
+  Particle.function("SwitchedTime", getSwitched);
   sample();
   lastPublishInSeconds = millis() / 1000;
   pubData("");

@@ -1,6 +1,7 @@
 const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
 
 #include <limits.h>
+#include <queue>
 
 class JSonizer {
   public:
@@ -17,6 +18,7 @@ class Utils {
     static void publish(String event, String data);
     static void publishJson();
     static String getName();
+    static void pushVal(int val);
 };
 
 class TimeSupport {
@@ -70,6 +72,14 @@ void Utils::publish(String event, String data) {
       delay(1000);
     }
 }
+
+std::queue<int> last10Values;
+void Utils::pushVal(int val) {
+  if (last10Values.size() > 9) {
+    last10Values.pop();
+  }
+  last10Values.push(val);
+}
 system_tick_t lastPublishInSeconds = 0;
 unsigned int lastDisplayInSeconds = 0;
 unsigned int displayIntervalInSeconds = 2;
@@ -83,6 +93,19 @@ void Utils::publishJson() {
     JSonizer::addSetting(json, "lastDisplayInSeconds", String(lastDisplayInSeconds));
     JSonizer::addSetting(json, "displayIntervalInSeconds", String(displayIntervalInSeconds));
     JSonizer::addSetting(json, "publishDelay", JSonizer::toString(publishDelay));
+    String last10 = "";
+    std::queue<int> temp;
+    while (!last10Values.empty()) {
+      temp.push(last10Values.front());
+      last10.concat(last10Values.front());
+      last10.concat(" ");
+      last10Values.pop();
+    }
+    while (!temp.empty()) {
+      last10Values.push(temp.front());
+      temp.pop();
+    }
+    JSonizer::addSetting(json, "last10", last10);
     json.concat("}");
     publish("Utils json", json);
 }
@@ -414,6 +437,7 @@ bool display_on_oled() {
     }
     changed = true;
     whenSwitchedToOn = timeSupport.now();
+    Utils::pushVal(value);
   } else {
     if (on) {
       spinner.display();
@@ -460,7 +484,6 @@ int pubState(String command) {
   return 1;
 }
 
-String previousState = "not set";
 void sample() {
   const int SAMPLES_PER_MILLI = 10; // approximately
   const int SAMPLES_TO_TAKE = 30;
@@ -469,7 +492,6 @@ void sample() {
   while (millis() - start < SAMPLE_INTERVAL) {
     lightSensor1.sample();
   }
-  previousState = lightSensor1.getState();
 }
 
 void clear() {

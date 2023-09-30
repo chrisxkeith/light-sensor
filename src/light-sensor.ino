@@ -25,6 +25,7 @@ class TimeSupport {
     unsigned long lastSyncMillis;
     String getSettings();
     bool isDST();
+    void setDST();
   public:
     TimeSupport(int timeZoneOffset);
     String timeStr(time_t t);
@@ -98,6 +99,10 @@ TimeSupport::TimeSupport(int timeZoneOffset) {
     Particle.syncTime();
     this->lastSyncMillis = millis();
     Time.zone(timeZoneOffset);
+    setDST();
+}
+
+void TimeSupport::setDST() {
     if (isDST()) {
       Time.beginDST();
     } else {
@@ -137,6 +142,7 @@ void TimeSupport::handleTime() {
                                                             // Request time synchronization from the Particle Cloud
         Particle.syncTime();
         lastSyncMillis = millis();
+        setDST();
     }
 }
 

@@ -151,7 +151,7 @@ bool TimeSupport::isDST() {
 }
 
 String TimeSupport::timeStr(time_t t) {
-    String fmt("%a %b %d %H:%M:%S %Y");
+    String fmt("%Y-%m-%dT%H:%M:%S");
     return Time.format(t, fmt);
 }
 

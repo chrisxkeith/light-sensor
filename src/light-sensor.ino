@@ -506,7 +506,7 @@ int getSwitched(String command) {
 void setup() {
   Utils::publish("Message", "Started setup...");
   Particle.function("Settings", pubSettings);
-  Particle.function("SensorData", pubData);
+  Particle.function("getData", pubData);
   Particle.function("SensorState", pubState);
   Particle.function("SwitchedTime", getSwitched);
   sample();

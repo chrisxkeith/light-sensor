@@ -375,8 +375,6 @@ class OLEDWrapper {
 
 OLEDWrapper oledWrapper;
 
-Sensor lightSensor1(A0,  "Light sensor");
-
 class Spinner {
   private:
     int middleX = oledWrapper.oled->getLCDWidth() / 2;
@@ -415,54 +413,68 @@ void display_digits(unsigned int num) {
   oledWrapper.displayNumber(String(num));
 }
 
-const int THRESHOLD = 175;
-bool on = false;
-int previousValue = 0;
-String whenSwitchedToOn = "";
+class LightSensor : public Sensor {
+  public:
+    const int THRESHOLD = 175;
+    bool on = false;
+    int previousValue = 0;
+    String whenSwitchedToOn = "";
+
+    LightSensor(int pin, String name) : Sensor(pin, name) {}
+
+    void publishStateJson() {
+      String json("{");
+      JSonizer::addFirstSetting(json, "THRESHOLD", String(THRESHOLD));
+      JSonizer::addSetting(json, "on", JSonizer::toString(on));
+      JSonizer::addSetting(json, "previousValue", String(previousValue));
+      json.concat("}");
+      Utils::publish("State json", json);
+    }
+    void publishData() {
+      bool isOn = (getValue() > THRESHOLD);
+      String json("{");
+      JSonizer::addFirstSetting(json, "on", JSonizer::toString(isOn));
+      JSonizer::addSetting(json, "whenSwitchedToOn", whenSwitchedToOn);
+      json.concat("}");
+      Utils::publish(getName(), json);
+    }
+};
+LightSensor lightSensor1(A0,  "Light sensor");
 
 bool display_on_oled() {
   bool changed = false;
   int value = lightSensor1.getValue();
-  if ((value > THRESHOLD) != on) {
+  if ((value > lightSensor1.THRESHOLD) != lightSensor1.on) {
     String json("{");
-    JSonizer::addFirstSetting(json, "previous state", (on ? "on" : "off"));
-    JSonizer::addSetting(json, "previousValue", String(previousValue));
+    JSonizer::addFirstSetting(json, "previous state", (lightSensor1.on ? "on" : "off"));
+    JSonizer::addSetting(json, "previousValue", String(lightSensor1.previousValue));
     JSonizer::addSetting(json, "current value", String(value));
     json.concat("}");
     Utils::publish("Diagnostic", json);
-    on = !on;
+    lightSensor1.on = !lightSensor1.on;
     oledWrapper.clear();
-    if (on) {
+    if (lightSensor1.on) {
       spinner.display();
+      lightSensor1.whenSwitchedToOn = timeSupport.now();
+    } else {
+      lightSensor1.whenSwitchedToOn = "";
     }
     changed = true;
-    whenSwitchedToOn = timeSupport.now();
     Utils::pushVal(value);
   } else {
-    if (on) {
+    if (lightSensor1.on) {
       spinner.display();
-    } else {
-      whenSwitchedToOn = "";
     }
   }
-  previousValue = value;
+  lightSensor1.previousValue = value;
   return changed;
-}
-
-void publishStateJson() {
-    String json("{");
-    JSonizer::addFirstSetting(json, "THRESHOLD", String(THRESHOLD));
-    JSonizer::addSetting(json, "on", JSonizer::toString(on));
-    JSonizer::addSetting(json, "previousValue", String(previousValue));
-    json.concat("}");
-    Utils::publish("State json", json);
 }
 
 // getSettings() is already defined somewhere.
 int pubSettings(String command) {
     if (command.compareTo("") == 0) {
         Utils::publishJson();
-        publishStateJson();
+        lightSensor1.publishStateJson();
     } else if (command.compareTo("time") == 0) {
         timeSupport.publishJson();
     } else {
@@ -472,10 +484,7 @@ int pubSettings(String command) {
 }
 
 int pubData(String command) {
-  String lightStatus(lightSensor1.getName());
-  lightStatus.concat(" is on");
-  bool isOn = (lightSensor1.getValue() > THRESHOLD);
-  Utils::publish(lightStatus, JSonizer::toString(isOn));
+  lightSensor1.publishData();
   return 1;
 }
 
@@ -498,17 +507,11 @@ void clear() {
   lightSensor1.clear();
 }
 
-int getSwitched(String command) {
-  Utils::publish("whenSwitchedToOn", whenSwitchedToOn);
-  return 1;
-}
-
 void setup() {
   Utils::publish("Message", "Started setup...");
   Particle.function("Settings", pubSettings);
   Particle.function("getData", pubData);
   Particle.function("SensorState", pubState);
-  Particle.function("SwitchedTime", getSwitched);
   sample();
   lastPublishInSeconds = millis() / 1000;
   pubData("");

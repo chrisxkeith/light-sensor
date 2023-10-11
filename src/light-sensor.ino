@@ -217,7 +217,7 @@ class Sensor {
     }
 
     int publishState() {
-      Utils::publish("Diagnostic", this->getState());
+      Utils::publish("Sensor Diagnostic", this->getState());
       return 1;
     }
 
@@ -450,7 +450,7 @@ bool display_on_oled() {
     JSonizer::addSetting(json, "previousValue", String(lightSensor1.previousValue));
     JSonizer::addSetting(json, "current value", String(value));
     json.concat("}");
-    Utils::publish("Diagnostic", json);
+    Utils::publish("Light Sensor Diagnostic", json);
     lightSensor1.on = !lightSensor1.on;
     oledWrapper.clear();
     if (lightSensor1.on) {

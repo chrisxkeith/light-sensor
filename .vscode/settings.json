@@ -7,5 +7,5 @@
     },
     "particle.firmwareVersion": "3.3.1",
     "particle.targetPlatform": "photon",
-    "particle.targetDevice": "photon-07"
+    "particle.targetDevice": "photon-15"
 }

@@ -93,19 +93,6 @@ void Utils::publishJson() {
     JSonizer::addSetting(json, "lastDisplayInSeconds", String(lastDisplayInSeconds));
     JSonizer::addSetting(json, "displayIntervalInSeconds", String(displayIntervalInSeconds));
     JSonizer::addSetting(json, "publishDelay", JSonizer::toString(publishDelay));
-    String last10 = "";
-    std::queue<int> temp;
-    while (!last10Values.empty()) {
-      temp.push(last10Values.front());
-      last10.concat(last10Values.front());
-      last10.concat(" ");
-      last10Values.pop();
-    }
-    while (!temp.empty()) {
-      last10Values.push(temp.front());
-      temp.pop();
-    }
-    JSonizer::addSetting(json, "last10", last10);
     json.concat("}");
     publish("Utils json", json);
 }
@@ -417,24 +404,29 @@ class LightSensor : public Sensor {
   public:
     const int THRESHOLD = 175;
     bool on = false;
-    int previousValue = 0;
     String whenSwitchedToOn = "";
 
     LightSensor(int pin, String name) : Sensor(pin, name) {}
 
-    void publishStateJson() {
-      String json("{");
-      JSonizer::addFirstSetting(json, "THRESHOLD", String(THRESHOLD));
-      JSonizer::addSetting(json, "on", JSonizer::toString(on));
-      JSonizer::addSetting(json, "previousValue", String(previousValue));
-      json.concat("}");
-      Utils::publish("State json", json);
-    }
     void publishData() {
-      bool isOn = (getValue() > THRESHOLD);
       String json("{");
-      JSonizer::addFirstSetting(json, "on", JSonizer::toString(isOn));
+      JSonizer::addFirstSetting(json, "on", JSonizer::toString(on));
       JSonizer::addSetting(json, "whenSwitchedToOn", whenSwitchedToOn);
+
+      String last10 = "";
+      std::queue<int> temp;
+      while (!last10Values.empty()) {
+        temp.push(last10Values.front());
+        last10.concat(last10Values.front());
+        last10.concat(" ");
+        last10Values.pop();
+      }
+      while (!temp.empty()) {
+        last10Values.push(temp.front());
+        temp.pop();
+      }
+      JSonizer::addSetting(json, "last10", last10);
+      JSonizer::addSetting(json, "THRESHOLD", String(THRESHOLD));
       json.concat("}");
       Utils::publish(getName(), json);
     }
@@ -445,12 +437,6 @@ bool display_on_oled() {
   bool changed = false;
   int value = lightSensor1.getValue();
   if ((value > lightSensor1.THRESHOLD) != lightSensor1.on) {
-    String json("{");
-    JSonizer::addFirstSetting(json, "previous state", (lightSensor1.on ? "on" : "off"));
-    JSonizer::addSetting(json, "previousValue", String(lightSensor1.previousValue));
-    JSonizer::addSetting(json, "current value", String(value));
-    json.concat("}");
-    Utils::publish("Light Sensor Diagnostic", json);
     lightSensor1.on = !lightSensor1.on;
     oledWrapper.clear();
     if (lightSensor1.on) {
@@ -466,7 +452,6 @@ bool display_on_oled() {
       spinner.display();
     }
   }
-  lightSensor1.previousValue = value;
   return changed;
 }
 
@@ -474,7 +459,6 @@ bool display_on_oled() {
 int pubSettings(String command) {
     if (command.compareTo("") == 0) {
         Utils::publishJson();
-        lightSensor1.publishStateJson();
     } else if (command.compareTo("time") == 0) {
         timeSupport.publishJson();
     } else {

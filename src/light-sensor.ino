@@ -25,9 +25,11 @@ class TimeSupport {
   private:
     unsigned long ONE_DAY_IN_MILLISECONDS;
     unsigned long lastSyncMillis;
+    int timeZoneOffset;
     String getSettings();
     bool isDST();
     void setDST();
+    void doHandleTime();
   public:
     TimeSupport(int timeZoneOffset);
     String timeStr(time_t t);
@@ -101,15 +103,18 @@ String TimeSupport::getSettings() {
     String json("{");
     JSonizer::addFirstSetting(json, "lastSyncMillis", String(lastSyncMillis));
     JSonizer::addSetting(json, "internalTime", now());
+    JSonizer::addSetting(json, "isDST", JSonizer::toString(isDST()));
+    JSonizer::addSetting(json, "timeZoneOffset", String(timeZoneOffset));
+    JSonizer::addSetting(json, "Time.day()", String(Time.day()));
+    JSonizer::addSetting(json, "Time.month()", String(Time.month()));
+    JSonizer::addSetting(json, "Time.weekday()", String(Time.weekday()));
     json.concat("}");
     return json;
 }
 
 TimeSupport::TimeSupport(int timeZoneOffset) {
-    Particle.syncTime();
-    this->lastSyncMillis = millis();
-    Time.zone(timeZoneOffset);
-    setDST();
+    this->timeZoneOffset = timeZoneOffset;
+    this->doHandleTime();
 }
 
 void TimeSupport::setDST() {
@@ -146,13 +151,19 @@ String TimeSupport::now() {
     return timeStr(Time.now());
 }
 
+void TimeSupport::doHandleTime() {
+  Time.zone(this->timeZoneOffset);
+  Particle.syncTime();
+  this->setDST();
+  Particle.syncTime(); // Now that we know (mostly) if we're in daylight savings time.
+  this->lastSyncMillis = millis();
+}
+
 void TimeSupport::handleTime() {
     int ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
     if (millis() - lastSyncMillis > ONE_DAY_IN_MILLISECONDS) {    // If it's been a day since last sync...
                                                             // Request time synchronization from the Particle Cloud
-        Particle.syncTime();
-        lastSyncMillis = millis();
-        setDST();
+      this->doHandleTime();
     }
 }
 

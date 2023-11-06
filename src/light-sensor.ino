@@ -59,7 +59,7 @@ String JSonizer::toString(bool b) {
     return "false";
 }
 
-bool Utils::publishDelay = true;
+bool Utils::publishDelay = false;
 int Utils::setInt(String command, int& i, int lower, int upper) {
     int tempMin = command.toInt();
     if (tempMin > lower && tempMin < upper) {

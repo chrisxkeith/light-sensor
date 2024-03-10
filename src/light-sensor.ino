@@ -23,7 +23,6 @@ class Utils {
 
 class TimeSupport {
   private:
-    unsigned long ONE_DAY_IN_MILLISECONDS;
     unsigned long lastSyncMillis;
     int timeZoneOffset;
     String getSettings();

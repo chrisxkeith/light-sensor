@@ -1,5 +1,3 @@
-const String githubHash = "to be replaced manually (and code re-flashed) after 'git push'";
-
 #include <limits.h>
 #include <queue>
 
@@ -10,7 +8,7 @@ class JSonizer {
     static String toString(bool b);
 };
 
-int publishRateInSeconds = 60;
+int publishRateInSeconds = -1;
 class Utils {
   public:
     static bool publishDelay;
@@ -87,7 +85,7 @@ unsigned int displayIntervalInSeconds = 2;
 
 void Utils::publishJson() {
     String json("{");
-    JSonizer::addFirstSetting(json, "githubHash", githubHash);
+    JSonizer::addFirstSetting(json, "Build", "~Tue, May 28, 2024 10:46:38 AM");
     JSonizer::addSetting(json, "githubRepo", "https://github.com/chrisxkeith/light-sensor");
     JSonizer::addSetting(json, "lastPublishInSeconds ", String(lastPublishInSeconds));
     JSonizer::addSetting(json, "publishRateInSeconds", String(publishRateInSeconds));
@@ -422,20 +420,6 @@ class LightSensor : public Sensor {
       String json("{");
       JSonizer::addFirstSetting(json, "on", JSonizer::toString(on));
       JSonizer::addSetting(json, "whenSwitchedToOn", whenSwitchedToOn);
-
-      String last10 = "";
-      std::queue<int> temp;
-      while (!last10Values.empty()) {
-        temp.push(last10Values.front());
-        last10.concat(last10Values.front());
-        last10.concat(" ");
-        last10Values.pop();
-      }
-      while (!temp.empty()) {
-        last10Values.push(temp.front());
-        temp.pop();
-      }
-      JSonizer::addSetting(json, "last10", last10);
       JSonizer::addSetting(json, "THRESHOLD", String(THRESHOLD));
       json.concat("}");
       Utils::publish(getName(), json);
@@ -519,7 +503,8 @@ void loop() {
   timeSupport.handleTime();
   sample();
   bool changed = display_on_oled();
-  if (changed || (lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
+  if ((publishRateInSeconds > 0) &&
+      changed || (lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
     lastPublishInSeconds = millis() / 1000;
     pubData("");
   }

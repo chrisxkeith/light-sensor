@@ -8,7 +8,7 @@ class JSonizer {
     static String toString(bool b);
 };
 
-int publishRateInSeconds = -1;
+int publishRateInSeconds = 0; // don't publish in loop()
 class Utils {
   public:
     static bool publishDelay;
@@ -56,7 +56,6 @@ String JSonizer::toString(bool b) {
     return "false";
 }
 
-bool Utils::publishDelay = false;
 int Utils::setInt(String command, int& i, int lower, int upper) {
     int tempMin = command.toInt();
     if (tempMin > lower && tempMin < upper) {
@@ -65,6 +64,8 @@ int Utils::setInt(String command, int& i, int lower, int upper) {
     }
     return -1;
 }
+
+bool Utils::publishDelay = true;
 void Utils::publish(String event, String data) {
     Particle.publish(event, data, 1, PRIVATE);
     if (publishDelay) {
@@ -85,7 +86,7 @@ unsigned int displayIntervalInSeconds = 2;
 
 void Utils::publishJson() {
     String json("{");
-    JSonizer::addFirstSetting(json, "Build", "~Tue, May 28, 2024 10:46:38 AM");
+    JSonizer::addFirstSetting(json, "Build", "~Wed, May 29, 2024  3:32:50 PM");
     JSonizer::addSetting(json, "githubRepo", "https://github.com/chrisxkeith/light-sensor");
     JSonizer::addSetting(json, "lastPublishInSeconds ", String(lastPublishInSeconds));
     JSonizer::addSetting(json, "publishRateInSeconds", String(publishRateInSeconds));
@@ -488,8 +489,8 @@ void clear() {
 void setup() {
   Utils::publish("Message", "Started setup...");
   Particle.function("Settings", pubSettings);
-  Particle.function("getData", pubData);
-  Particle.function("SensorState", pubState);
+  Particle.function("GetData", pubData);
+  Particle.function("SensorStat", pubState);
   sample();
   lastPublishInSeconds = millis() / 1000;
   pubData("");
@@ -504,7 +505,7 @@ void loop() {
   sample();
   bool changed = display_on_oled();
   if ((publishRateInSeconds > 0) &&
-      changed || (lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000)) {
+      (changed || (lastPublishInSeconds + publishRateInSeconds) <= (millis() / 1000))) {
     lastPublishInSeconds = millis() / 1000;
     pubData("");
   }
